@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "checkJs": false,
+    "forceConsistentCasingInFileNames": false
+  },
+  "exclude": ["node_modules", "dist"]
+}
