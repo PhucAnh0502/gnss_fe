@@ -5,17 +5,15 @@ export const HANOI_CENTER = [21.0285, 105.8542];
 export const HISTORY_LOOKBACK_HOURS = 24;
 export const TRACK_COLORS = ['#38bdf8', '#f97316', '#a78bfa', '#34d399', '#f43f5e', '#eab308'];
 
-export const getSocketBaseUrl = (configured = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api') => {
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+if (!apiBaseUrl) {
+  throw new Error('Missing VITE_API_BASE_URL. Set it in your deployment environment.');
+}
+
+export const getSocketBaseUrl = (configured = apiBaseUrl) => {
   try {
     const url = new URL(configured);
-    const isLoopbackHost = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
-    const runtimeHost = window.location.hostname;
-    const isRuntimeLoopback = ['localhost', '127.0.0.1', '::1'].includes(runtimeHost);
-
-    if (isLoopbackHost && !isRuntimeLoopback) {
-      url.hostname = runtimeHost;
-    }
-
     return url.toString().replace(/\/api\/?$/, '').replace(/\/$/, '');
   } catch {
     return configured.replace(/\/api\/?$/, '');
