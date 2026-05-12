@@ -126,10 +126,16 @@ export async function fetchHistoryData({
 
   onLoadingChange(true);
   try {
+    // Convert date strings to UTC timestamps (fix timezone bug)
+    const [startYear, startMonth, startDay] = startDate.split('-');
+    const [endYear, endMonth, endDay] = endDate.split('-');
+    const from = new Date(Date.UTC(startYear, startMonth - 1, startDay)).toISOString();
+    const to = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999)).toISOString();
+
     const response = await axiosInstance.get(`/tracking/history/${deviceId}`, {
       params: {
-        from: new Date(startDate).toISOString(),
-        to: new Date(endDate).toISOString(),
+        from,
+        to,
       },
     });
 
