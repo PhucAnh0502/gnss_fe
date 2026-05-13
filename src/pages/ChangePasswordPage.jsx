@@ -69,7 +69,7 @@ export default function ChangePasswordPage() {
 
       <div className="w-full max-w-5xl glass-panel rounded-glass flex flex-col md:flex-row overflow-hidden relative z-10">
         <div className="hidden md:flex w-1/2 p-12 flex-col items-center justify-center bg-slate-900/60 border-r border-slate-700/50">
-          <h1 className="text-6xl font-black text-white italic tracking-tighter">GNSS Tracker</h1>
+          <h1 className="text-6xl font-black text-white italic tracking-tighter">GNSS Vision</h1>
           <EarthModel modelUrl="/models/earth_orbit.glb" />
           <p className="mt-8 text-slate-500 font-mono text-xs uppercase tracking-[0.4em]">Proprietary Tracking System</p>
         </div>
