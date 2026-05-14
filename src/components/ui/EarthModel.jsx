@@ -10,17 +10,19 @@ function Model({ url }) {
 
 export const EarthModel = ({ modelUrl }) => {
   return (
-    <Canvas shadows camera={{ position: [0, 0, 150], fov: 40 }} gl={{ preserveDrawingBuffer: true }}>
-      <ambientLight intensity={0.5} />
-      
-      <Suspense fallback={null}>
-        <Stage environment="city" intensity={0.6} contactShadow={{ opacity: 0.5, blur: 2 }} adjustCamera={true}>
-          <Model url={modelUrl} />
-        </Stage>
-      </Suspense>
+    <div className="w-full h-64 md:h-72">
+      <Canvas shadows camera={{ position: [0, 0, 150], fov: 40 }} gl={{ preserveDrawingBuffer: true }}>
+        <ambientLight intensity={0.5} />
+        
+        <Suspense fallback={null}>
+          <Stage environment="city" intensity={0.6} contactShadow={{ opacity: 0.5, blur: 2 }} adjustCamera={true}>
+            <Model url={modelUrl} />
+          </Stage>
+        </Suspense>
 
-      <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.5} />
-    </Canvas>
+        <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.5} />
+      </Canvas>
+    </div>
   );
 };
 

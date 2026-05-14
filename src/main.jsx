@@ -16,6 +16,7 @@ import { dashboardRoute } from './routes/dashboard';
 import { devicesRoute } from './routes/devices';
 import { mapRoute } from './routes/map';
 import { historyRoute } from './routes/history';
+import { snapshotsRoute } from './routes/snapshots';
 import { catchAllRoute } from './routes/$';
 
 const routeTree = rootRoute.addChildren([
@@ -30,6 +31,7 @@ const routeTree = rootRoute.addChildren([
   devicesRoute,
   mapRoute,
   historyRoute,
+  snapshotsRoute,
   catchAllRoute,
 ]);
 const router = createRouter({ routeTree });

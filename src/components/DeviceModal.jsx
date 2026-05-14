@@ -31,7 +31,6 @@ const DeviceModal = memo(function DeviceModal({
   const [form, setForm] = useState({
     deviceName: '',
     deviceCode: '',
-    status: 'active',
   });
   const [errors, setErrors] = useState({});
 
@@ -45,13 +44,11 @@ const DeviceModal = memo(function DeviceModal({
       setForm({
         deviceName: device.deviceName || '',
         deviceCode: device.deviceCode || '',
-        status: device.status || 'active',
       });
     } else {
       setForm({
         deviceName: '',
         deviceCode: '',
-        status: 'active',
       });
     }
     setErrors({});
@@ -73,7 +70,7 @@ const DeviceModal = memo(function DeviceModal({
   };
 
   const handleClose = () => {
-    setForm(device || { deviceName: '', deviceCode: '', status: 'active' });
+    setForm(device || { deviceName: '', deviceCode: '' });
     setErrors({});
     onClose();
   };
@@ -132,20 +129,6 @@ const DeviceModal = memo(function DeviceModal({
                 />
                 {errors.deviceCode && <p className="text-red-400 text-xs mt-1 ml-1">{errors.deviceCode}</p>}
                 {device && <p className="text-slate-400 text-xs mt-1 ml-1">Device code cannot be changed</p>}
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-slate-400 ml-1 block mb-1.5">
-                  Status
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 transition-all"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
               </div>
 
               <div className="flex gap-3 pt-4">

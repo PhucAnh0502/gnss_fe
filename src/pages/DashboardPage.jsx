@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Car,
+  Camera,
   Gauge,
   Loader2,
   MapPinned,
