@@ -1,43 +1,138 @@
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { useEffect } from 'react';
 
-export function HistoryRouteMap({ mapData, mapRef }) {
+function MapBoundsSync({ mapData }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!mapData || mapData.polyline.length === 0) return;
+
+    const bounds = mapData.polyline.map(([lat, lng]) => [lat, lng]);
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+    }
+  }, [map, mapData]);
+
+  return null;
+}
+
+export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
   if (!mapData) {
     return null;
   }
 
+  const startPoint = mapData.polyline[0];
+  const endPoint = mapData.polyline[mapData.polyline.length - 1];
+
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/40 backdrop-blur-sm overflow-hidden">
       <div className="p-4">
-        <h3 className="text-sm font-semibold text-white mb-4">Movement Route</h3>
-        <div ref={mapRef} className="rounded-lg overflow-hidden h-96 bg-white">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-white">Movement Route</h3>
+          <div className="flex items-center gap-4 text-xs text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              Start
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              End
+            </span>
+            {selectedPointIndex !== null && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                Selected
+              </span>
+            )}
+          </div>
+        </div>
+        <div ref={mapRef} className="rounded-lg overflow-hidden h-[420px] bg-slate-800">
           <MapContainer center={mapData.center} zoom={15} style={{ height: '100%', width: '100%' }}>
+            <MapBoundsSync mapData={mapData} />
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; OpenStreetMap contributors'
               crossOrigin="anonymous"
             />
+
+            {/* Continuous polyline - the main route */}
             {mapData.polyline.length > 1 && (
-              <Polyline positions={mapData.polyline} color="rgb(59, 130, 246)" weight={3} opacity={0.8} />
+              <Polyline
+                positions={mapData.polyline}
+                pathOptions={{
+                  color: '#3b82f6',
+                  weight: 4,
+                  opacity: 0.9,
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
+              />
             )}
-            {mapData.polyline.map((coord, index) => (
+
+            {/* Start marker */}
+            {startPoint && (
               <CircleMarker
-                key={`${coord[0]}-${coord[1]}-${index}`}
-                center={coord}
-                radius={index === 0 || index === mapData.polyline.length - 1 ? 6 : 3}
-                fillColor={index === 0 ? '#22c55e' : index === mapData.polyline.length - 1 ? '#ef4444' : '#3b82f6'}
-                color={index === 0 ? '#16a34a' : index === mapData.polyline.length - 1 ? '#dc2626' : '#1e40af'}
-                weight={2}
-                opacity={0.8}
-                fillOpacity={0.7}
+                center={startPoint}
+                radius={8}
+                pathOptions={{
+                  fillColor: '#22c55e',
+                  color: '#ffffff',
+                  weight: 2.5,
+                  fillOpacity: 1,
+                }}
               >
                 <Popup>
-                  <div className="text-xs">
-                    <p>{index === 0 ? 'Start' : index === mapData.polyline.length - 1 ? 'End' : `Point ${index}`}</p>
-                    <p>{coord[0].toFixed(4)}, {coord[1].toFixed(4)}</p>
+                  <div className="text-xs font-medium">
+                    <p className="text-emerald-700 font-semibold">Start Point</p>
+                    <p className="text-gray-600">{startPoint[0].toFixed(6)}, {startPoint[1].toFixed(6)}</p>
                   </div>
                 </Popup>
               </CircleMarker>
-            ))}
+            )}
+
+            {/* End marker */}
+            {endPoint && mapData.polyline.length > 1 && (
+              <CircleMarker
+                center={endPoint}
+                radius={8}
+                pathOptions={{
+                  fillColor: '#ef4444',
+                  color: '#ffffff',
+                  weight: 2.5,
+                  fillOpacity: 1,
+                }}
+              >
+                <Popup>
+                  <div className="text-xs font-medium">
+                    <p className="text-red-700 font-semibold">End Point</p>
+                    <p className="text-gray-600">{endPoint[0].toFixed(6)}, {endPoint[1].toFixed(6)}</p>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )}
+
+            {/* Selected point marker */}
+            {selectedPointIndex !== null && mapData.polyline[selectedPointIndex] && (
+              <CircleMarker
+                center={mapData.polyline[selectedPointIndex]}
+                radius={9}
+                pathOptions={{
+                  fillColor: '#f59e0b',
+                  color: '#ffffff',
+                  weight: 3,
+                  fillOpacity: 1,
+                }}
+              >
+                <Popup>
+                  <div className="text-xs font-medium">
+                    <p className="text-amber-700 font-semibold">Point #{selectedPointIndex + 1}</p>
+                    <p className="text-gray-600">
+                      {mapData.polyline[selectedPointIndex][0].toFixed(6)}, {mapData.polyline[selectedPointIndex][1].toFixed(6)}
+                    </p>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )}
           </MapContainer>
         </div>
       </div>

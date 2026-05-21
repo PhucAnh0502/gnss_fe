@@ -1,19 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
-import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, createColumnHelper } from '@tanstack/react-table';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useDevices } from '../features/useDevices';
 import { HistoryFiltersPanel } from '../components/history/HistoryFiltersPanel';
 import { HistoryRouteMap } from '../components/history/HistoryRouteMap';
-import { HistoryTable } from '../components/history/HistoryTable';
+import { HistoryPointList } from '../components/history/HistoryPointList';
 import axiosInstance from '../api/axiosInstance';
 import {
   buildRouteMapData,
-  buildTrackingColumns,
   exportHistoryPdf,
   fetchHistoryData,
   getDefaultEndDate,
   getDefaultStartDate,
-  HISTORY_PAGE_SIZE,
 } from '../services/historyService.jsx';
 
 export default function HistoryPage() {
@@ -22,29 +19,13 @@ export default function HistoryPage() {
   const [endDate, setEndDate] = useState(getDefaultEndDate);
   const [historyData, setHistoryData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sorting, setSorting] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedPointIndex, setSelectedPointIndex] = useState(null);
   const mapRef = useRef(null);
 
   const { data: devices = [] } = useDevices();
 
   const mapData = useMemo(() => buildRouteMapData(historyData), [historyData]);
-  const columns = useMemo(() => buildTrackingColumns(createColumnHelper()), []);
-
-  const table = useReactTable({
-    data: historyData,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: HISTORY_PAGE_SIZE,
-      },
-    },
-  });
 
   const fetchHistory = () =>
     fetchHistoryData({
@@ -53,7 +34,10 @@ export default function HistoryPage() {
       startDate,
       endDate,
       onLoadingChange: setIsLoading,
-      onSuccess: setHistoryData,
+      onSuccess: (data) => {
+        setHistoryData(data);
+        setSelectedPointIndex(null);
+      },
     });
 
   const handleExportPDF = () =>
@@ -91,9 +75,18 @@ export default function HistoryPage() {
           canExport={historyData.length > 0}
         />
 
-        <HistoryRouteMap mapData={mapData} mapRef={mapRef} />
+        <HistoryRouteMap
+          mapData={mapData}
+          mapRef={mapRef}
+          selectedPointIndex={selectedPointIndex}
+        />
 
-        <HistoryTable table={table} historyData={historyData} isLoading={isLoading} selectedDeviceId={selectedDeviceId} />
+        <HistoryPointList
+          historyData={historyData}
+          isLoading={isLoading}
+          selectedDeviceId={selectedDeviceId}
+          onPointSelect={setSelectedPointIndex}
+        />
       </div>
     </DashboardLayout>
   );
