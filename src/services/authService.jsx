@@ -1,5 +1,10 @@
 import axiosInstance from '../api/axiosInstance.js';
 
+export async function getProfile() {
+  const { data } = await axiosInstance.get('/auth/me');
+  return data?.data || null;
+}
+
 export async function login(credentials) {
   const { data } = await axiosInstance.post('/auth/login', credentials);
   return data;

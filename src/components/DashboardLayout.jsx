@@ -97,13 +97,18 @@ export function DashboardLayout({ children }) {
 
         {/* FOOTER */}
         <div className="pt-5 border-t border-slate-800/50 space-y-1.5">
-          <button
-            type="button"
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/40 transition-colors font-medium text-sm"
+          <Link
+            to="/settings"
+            onClick={() => setSidebarOpen(false)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium text-sm no-underline ${
+              location.pathname === '/settings'
+                ? 'bg-brand-blue/15 text-brand-blue-light border border-brand-blue/25'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/40 border border-transparent'
+            }`}
           >
             <Settings className="w-[18px] h-[18px]" />
             <span>Settings</span>
-          </button>
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
