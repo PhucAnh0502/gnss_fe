@@ -7,7 +7,6 @@ import {
   Map,
   Camera,
   Settings,
-  Radar,
   LogOut,
   Menu,
   X,
@@ -62,9 +61,7 @@ export function DashboardLayout({ children }) {
 
         {/* LOGO */}
         <div className="flex items-center gap-3 px-4 py-4 mb-8">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-blue via-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-brand-blue/25">
-            <Radar className="w-5.5 h-5.5 text-white" />
-          </div>
+          <img src="/icon-192.png" alt="GNSS Vision" className="w-11 h-11 rounded-xl shadow-lg shadow-brand-blue/25" />
           <div>
             <p className="font-bold text-white text-lg leading-5 tracking-tight">GNSS</p>
             <p className="text-[11px] tracking-[0.2em] text-brand-blue-light uppercase font-semibold mt-0.5">Vision</p>
@@ -133,9 +130,7 @@ export function DashboardLayout({ children }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-blue to-cyan-400 flex items-center justify-center">
-              <Radar className="w-3.5 h-3.5 text-white" />
-            </div>
+            <img src="/icon-192.png" alt="GNSS Vision" className="w-7 h-7 rounded-lg" />
             <span className="font-semibold text-white text-sm">
               {currentPage?.label || 'GNSS Vision'}
             </span>

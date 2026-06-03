@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#155AD4"/>
+      <stop offset="100%" stop-color="#0D3CA0"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)"/>
+  <!-- Orbit ring (back) -->
+  <ellipse cx="32" cy="34" rx="21" ry="7.5" stroke="#fff" stroke-width="2" opacity="0.25" fill="none" transform="rotate(-12 32 34)"/>
+  <!-- Location Pin -->
+  <path d="M32 18c-5.5 0-10 4.5-10 10 0 7.5 10 18 10 18s10-10.5 10-18c0-5.5-4.5-10-10-10z" fill="#fff" opacity="0.95"/>
+  <circle cx="32" cy="28" r="4" fill="#1555CC"/>
+  <!-- Orbit ring (front) -->
+  <path d="M11.5 32.5 A21 7.5 -12 0 0 32 41.5 A21 7.5 -12 0 0 52.5 32.5" stroke="#fff" stroke-width="2.2" opacity="0.85" fill="none" stroke-linecap="round" transform="rotate(-12 32 34)"/>
+  <!-- Satellite dot -->
+  <circle cx="49" cy="28" r="2.5" fill="#fff" opacity="0.95"/>
+</svg>

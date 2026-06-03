@@ -130,6 +130,10 @@ export default function MapPage() {
             <GlobeTrackingTab
               satelliteIds={selectedDevice ? selectedDeviceSatelliteIds : allSatelliteIds}
               highlightedIds={fixSvidSet}
+              devicePoints={devicePoints}
+              selectedDeviceCode={selectedDevice?.deviceCode || null}
+              focusPosition={latestPoint ? { lat: latestPoint.mapLat, lng: latestPoint.mapLng } : null}
+              satelliteStatuses={latestPoint?.raw?.status || []}
             />
           )}
 
