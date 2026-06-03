@@ -1,16 +1,76 @@
-# React + Vite
+# GNSS Vision — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web dashboard cho hệ thống GNSS Vision. Hiển thị real-time tracking, quản lý thiết bị, bản đồ, Globe 3D, snapshots và cài đặt tài khoản.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 19** + Vite
+- **TanStack Router** — routing
+- **TanStack React Query** — data fetching & caching
+- **Tailwind CSS 4** — styling
+- **Framer Motion** — animations
+- **Leaflet + React Leaflet** — bản đồ 2D
+- **COBE** — Globe 3D (canvas-based, lightweight)
+- **Three.js + React Three Fiber** — 3D Earth model (login page)
+- **Socket.IO Client** — real-time tracking via WebSocket
+- **Lucide React** — icons
+- **Sonner** — toast notifications
+- **Axios** — HTTP client
 
-## React Compiler
+## Cấu trúc thư mục
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+src/
+├── api/              # Axios instance & interceptors
+├── components/       # Shared components
+│   ├── map/          # MapTrackingTab, GlobeTrackingTab
+│   └── ui/           # Button, Input, EarthModel
+├── features/         # React Query hooks (useDevices, useAuth)
+├── lib/              # Utilities (auth helpers)
+├── pages/            # Page components
+│   ├── DashboardPage.jsx
+│   ├── DevicesPage.jsx
+│   ├── HistoryPage.jsx
+│   ├── MapPage.jsx
+│   ├── SnapshotsPage.jsx
+│   ├── SettingsPage.jsx
+│   └── LoginPage.jsx
+├── routes/           # TanStack Router route definitions
+├── services/         # API service functions
+└── main.jsx          # Entry point
+```
 
-## Expanding the ESLint configuration
+## Chức năng chính
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **Dashboard** — Tổng quan: thống kê thiết bị, telemetry chart, fleet health, alerts
+- **Devices** — CRUD quản lý thiết bị GPS
+- **Live Map** — Bản đồ real-time vị trí thiết bị (Leaflet) + Globe 3D satellite visualization (COBE)
+- **History** — Lịch sử tracking theo khoảng thời gian
+- **Snapshots** — Xem ảnh chụp từ thiết bị, phân trang, modal chi tiết
+- **Settings** — Thông tin tài khoản, đổi mật khẩu
+
+## Cài đặt & Chạy
+
+```bash
+# Cài dependencies
+npm install
+
+# Tạo file .env
+# VITE_API_BASE_URL=http://localhost:5000/api
+
+# Chạy development
+npm run dev
+
+# Build production
+npm run build
+```
+
+## Biến môi trường
+
+| Biến | Mô tả |
+|------|--------|
+| `VITE_API_BASE_URL` | URL backend API (vd: `http://localhost:5000/api`) |
+
+## Real-time
+
+Frontend kết nối WebSocket tới backend qua Socket.IO. Mỗi device có event `live:{deviceCode}` chứa GPS data real-time (lat, lng, speed, heading, satellites, raw GNSS measurements).
