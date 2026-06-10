@@ -32,7 +32,6 @@ const toCoordinatesText = (snapshot) => {
 export const normalizeSnapshot = (item) => ({
   id: item.id?.toString() || '',
   deviceId: item.deviceId?.toString() || item.device_id?.toString() || '',
-  trackingId: item.trackingId?.toString() || item.tracking_id?.toString() || null,
   capturedAt: item.capturedAt || item.captured_at || new Date().toISOString(),
   capturedAtLabel: toDateLabel(item.capturedAt || item.captured_at),
   captureMode: (item.captureMode || item.capture_mode || 'manual').toString(),
@@ -88,19 +87,9 @@ export const uploadSnapshotFile = async ({ snapshotId, file }) => {
   return normalizeSnapshot(data?.data || {});
 };
 
-export const attachSnapshotToTracking = async ({ snapshotId, trackingId }) => {
-  const { data } = await axiosInstance.post('/snapshots/attach-to-tracking', {
-    snapshotId,
-    trackingId,
-  });
-
-  return normalizeSnapshot(data?.data || {});
-};
-
 export const createSnapshotFromFile = async ({ deviceId, file, trackingPoint, note }) => {
   const payload = {
     deviceId,
-    trackingId: trackingPoint?.id || null,
     capturedAt: new Date().toISOString(),
     captureMode: 'manual',
     latitude: trackingPoint?.latitude ?? null,
