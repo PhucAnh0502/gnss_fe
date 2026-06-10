@@ -86,34 +86,3 @@ export const uploadSnapshotFile = async ({ snapshotId, file }) => {
 
   return normalizeSnapshot(data?.data || {});
 };
-
-export const createSnapshotFromFile = async ({ deviceId, file, trackingPoint, note }) => {
-  const payload = {
-    deviceId,
-    capturedAt: new Date().toISOString(),
-    captureMode: 'manual',
-    latitude: trackingPoint?.latitude ?? null,
-    longitude: trackingPoint?.longitude ?? null,
-    altitude: trackingPoint?.altitude ?? 0,
-    speed: trackingPoint?.speed ?? 0,
-    heading: trackingPoint?.heading ?? 0,
-    hdop: trackingPoint?.hdop ?? 0,
-    satellitesCount: trackingPoint?.satellites_count ?? trackingPoint?.satellitesCount ?? 0,
-    satellitesUsed: trackingPoint?.satellites_used ?? trackingPoint?.satellitesUsed ?? 0,
-    avgCn0: trackingPoint?.avg_cn0 ?? trackingPoint?.avgCn0 ?? 0,
-    mimeType: file?.type || 'image/jpeg',
-    note: note || null,
-  };
-
-  const snapshot = await initSnapshot(payload);
-  if (!snapshot?.id) {
-    throw new Error('Snapshot init did not return an id');
-  }
-
-  return uploadSnapshotFile({ snapshotId: snapshot.id, file });
-};
-
-export const formatSnapshotSummary = (snapshot) => ({
-  capturedAtLabel: snapshot?.capturedAtLabel || toDateLabel(snapshot?.capturedAt),
-  locationLabel: snapshot?.locationLabel || toCoordinatesText(snapshot || {}),
-});

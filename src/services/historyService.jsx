@@ -1,9 +1,7 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { Clock, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const HISTORY_PAGE_SIZE = 10;
 export const DEFAULT_LOOKBACK_DAYS = 7;
 
 export const getDefaultStartDate = () => {
@@ -13,15 +11,6 @@ export const getDefaultStartDate = () => {
 };
 
 export const getDefaultEndDate = () => new Date().toISOString().split('T')[0];
-
-export const formatCoordinates = (coordinates) => {
-  if (!coordinates || coordinates.length < 2) {
-    return null;
-  }
-
-  const [lng, lat] = coordinates;
-  return `${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}`;
-};
 
 export const buildRouteMapData = (historyData) => {
   if (historyData.length === 0) {
@@ -50,64 +39,6 @@ export const buildRouteMapData = (historyData) => {
     polyline: coordinates,
   };
 };
-
-export const buildTrackingColumns = (columnHelper) => [
-  columnHelper.accessor('timestamp', {
-    header: 'Date & Time',
-    cell: (info) => {
-      const date = new Date(info.getValue());
-
-      return (
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-blue-400" />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-white">{date.toLocaleDateString('vi-VN')}</span>
-            <span className="text-xs text-slate-400">
-              {date.toLocaleTimeString('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
-            </span>
-          </div>
-        </div>
-      );
-    },
-    enableSorting: true,
-  }),
-  columnHelper.accessor('location', {
-    header: 'Location',
-    cell: (info) => {
-      const coordinates = info.getValue()?.coordinates;
-      const coordinateText = formatCoordinates(coordinates) || 'N/A';
-      const hdop = info.row.original.hdop;
-
-      return (
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-emerald-400" />
-          <div className="flex flex-col">
-            <span className="text-sm text-white font-mono">{coordinateText}</span>
-            <span className="text-xs text-slate-400">HDOP: {hdop?.toFixed(2) || 'N/A'}</span>
-          </div>
-        </div>
-      );
-    },
-  }),
-  columnHelper.accessor('speed', {
-    header: 'Speed',
-    cell: (info) => (
-      <span className="text-sm text-blue-300 font-semibold">{(info.getValue() || 0).toFixed(2)} km/h</span>
-    ),
-  }),
-  columnHelper.accessor('altitude', {
-    header: 'Altitude',
-    cell: (info) => <span className="text-sm text-slate-300">{(info.getValue() || 0).toFixed(1)} m</span>,
-  }),
-  columnHelper.accessor('satellites_used', {
-    header: 'Satellites',
-    cell: (info) => <span className="text-sm text-slate-300">{info.getValue() || 0}</span>,
-  }),
-];
 
 export async function fetchHistoryData({
   axiosInstance,
