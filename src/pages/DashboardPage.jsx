@@ -11,11 +11,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { useDevices } from '../features/useDevices';
-import { getDashboardSnapshot } from '../services/dashboardService.jsx';
+import { useDashboard } from '../features/useDashboard';
 
 const MotionDiv = motion.div;
 const MotionSection = motion.section;
@@ -133,22 +131,20 @@ function formatRelativeTime(isoString) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { data: devices = [] } = useDevices();
 
   const {
-    data: snapshot,
+    devices,
+    cards: snapshotCards,
+    telemetrySeries,
+    health,
+    alerts,
+    activities,
     isLoading,
-    dataUpdatedAt,
-  } = useQuery({
-    queryKey: ['dashboard-snapshot', devices.map((device) => device.id).join(',')],
-    queryFn: () => getDashboardSnapshot(devices),
-    enabled: devices.length > 0,
-    refetchInterval: 60 * 1000,
-    staleTime: 30 * 1000,
-  });
+    updatedAt,
+  } = useDashboard();
 
   const cards = useMemo(() => (
-    snapshot?.cards || {
+    snapshotCards || {
       totalDevices: devices.length,
       activeDevices: devices.filter((item) => item.status === 'active').length,
       inactiveDevices: devices.filter((item) => item.status !== 'active').length,
@@ -159,7 +155,7 @@ export default function DashboardPage() {
       avgSatUsed: 0,
       avgCn0: 0,
     }
-  ), [snapshot?.cards, devices]);
+  ), [snapshotCards, devices]);
 
   const stats = useMemo(() => ([
     {
@@ -196,19 +192,17 @@ export default function DashboardPage() {
     },
   ]), [cards]);
 
-  const health = snapshot?.health || [
+  const health_ = health.length ? health : [
     { label: 'Excellent Signal', value: 0, tone: 'bg-emerald-400' },
     { label: 'Moderate Signal', value: 0, tone: 'bg-sky-400' },
     { label: 'Low Signal', value: 0, tone: 'bg-amber-400' },
   ];
 
-  const alerts = snapshot?.alerts || [];
-  const activities = snapshot?.activities || [];
-  const telemetrySeries = useMemo(() => snapshot?.telemetrySeries || [], [snapshot?.telemetrySeries]);
+  const telemetrySeries_ = useMemo(() => telemetrySeries, [telemetrySeries]);
 
-  const chart = useMemo(() => buildAreaPath(telemetrySeries, 600, 180, 14), [telemetrySeries]);
+  const chart = useMemo(() => buildAreaPath(telemetrySeries_, 600, 180, 14), [telemetrySeries_]);
 
-  const updatedAtLabel = dataUpdatedAt ? formatRelativeTime(new Date(dataUpdatedAt).toISOString()) : '';
+  const updatedAtLabel = updatedAt ? formatRelativeTime(updatedAt) : '';
 
   return (
     <DashboardLayout>
@@ -250,7 +244,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-slate-400 mt-1">GNSS quality score per device</p>
               </div>
               <span className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-                {telemetrySeries.length} devices
+                {telemetrySeries_.length} devices
               </span>
             </div>
 
@@ -286,7 +280,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* X-axis device labels */}
-                {telemetrySeries.length > 0 && chart?.points && chart.points.map((point, i) => (
+                {telemetrySeries_.length > 0 && chart?.points && chart.points.map((point, i) => (
                   <text
                     key={`label-${i}`}
                     x={point.x}
@@ -296,7 +290,7 @@ export default function DashboardPage() {
                     fontSize="8"
                     className="select-none"
                   >
-                    {telemetrySeries[i]?.label?.slice(-4) || ''}
+                    {telemetrySeries_[i]?.label?.slice(-4) || ''}
                   </text>
                 ))}
               </svg>
@@ -306,7 +300,7 @@ export default function DashboardPage() {
               <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-3">
                 <p className="text-xs text-slate-400">Peak Quality</p>
                 <p className="mt-1 text-xl font-semibold text-sky-300">
-                  {telemetrySeries.length ? Math.max(...telemetrySeries.map((item) => item.value)).toFixed(1) : '0.0'}%
+                  {telemetrySeries_.length ? Math.max(...telemetrySeries_.map((item) => item.value)).toFixed(1) : '0.0'}%
                 </p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-3">
@@ -328,7 +322,7 @@ export default function DashboardPage() {
               <p className="text-sm text-slate-400 mt-1">Signal classification across active devices</p>
 
               <div className="mt-5 space-y-4">
-                {health.map((item) => (
+                {health_.map((item) => (
                   <div key={item.label}>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-300">{item.label}</span>

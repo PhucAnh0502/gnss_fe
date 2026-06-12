@@ -1,22 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Globe, Map as MapIcon, Satellite, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { MapTrackingTab } from '../components/map/MapTrackingTab';
 import { GlobeTrackingTab } from '../components/map/GlobeTrackingTab';
-import { useDevices } from '../features/useDevices';
-import {
-  HANOI_CENTER,
-  buildAllSatelliteIds,
-  buildDevicePoints,
-  buildDeviceTracks,
-  buildDisplayDevices,
-  buildFixSvidSet,
-  buildSelectedDeviceTrack,
-  getSocketBaseUrl,
-  loadHistoryTracks,
-  subscribeLiveTracks,
-} from '../services/mapService.jsx';
+import { useMap } from '../features/useMap';
+import { HANOI_CENTER } from '../services/mapService.jsx';
 
 const tabClass = (isActive) => (
   `px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
@@ -29,72 +18,32 @@ const tabClass = (isActive) => (
 export default function MapPage() {
   const [activeTab, setActiveTab] = useState('map');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [deviceSearch, setDeviceSearch] = useState('');
-  const [liveTrackByCode, setLiveTrackByCode] = useState({});
-  const [historyTrackByCode, setHistoryTrackByCode] = useState({});
 
-  const { data: devices = [], isLoading, isError } = useDevices();
-
-  const socketBaseUrl = useMemo(() => getSocketBaseUrl(), []);
-  const displayDevices = useMemo(() => buildDisplayDevices(devices), [devices]);
-
-  const selectedDevice = useMemo(() => (
-    displayDevices.find((item) => item.id === selectedDeviceId) || null
-  ), [displayDevices, selectedDeviceId]);
+  const {
+    selectedDeviceId,
+    setSelectedDeviceId,
+    selectedDevice,
+    displayDevices,
+    deviceTracks,
+    devicePoints,
+    selectedDeviceTrack,
+    latestPoint,
+    fixSvidSet,
+    allSatelliteIds,
+    isLoading,
+    isError,
+  } = useMap();
 
   const filteredDevices = useMemo(() => {
     const keyword = deviceSearch.trim().toLowerCase();
-
-    if (!keyword) {
-      return displayDevices;
-    }
-
-    return displayDevices.filter((device) => (
-      device.deviceName.toLowerCase().includes(keyword)
-    ));
+    if (!keyword) return displayDevices;
+    return displayDevices.filter((device) => device.deviceName.toLowerCase().includes(keyword));
   }, [deviceSearch, displayDevices]);
-
-  useEffect(() => {
-    loadHistoryTracks(displayDevices).then((historyTracks) => {
-      setHistoryTrackByCode(historyTracks);
-    });
-  }, [displayDevices]);
-
-  useEffect(() => subscribeLiveTracks({
-    displayDevices,
-    socketBaseUrl,
-    onPoint: (deviceCode, point) => {
-      setLiveTrackByCode((prev) => {
-        const next = { ...prev };
-        const current = next[deviceCode] || [];
-        next[deviceCode] = [...current, point].slice(-60);
-        return next;
-      });
-    },
-  }), [displayDevices, socketBaseUrl]);
-
-  const deviceTracks = useMemo(() => (
-    buildDeviceTracks({ displayDevices, historyTrackByCode, liveTrackByCode })
-  ), [displayDevices, historyTrackByCode, liveTrackByCode]);
-
-  const devicePoints = useMemo(() => buildDevicePoints(deviceTracks), [deviceTracks]);
-
-  const selectedDeviceTrack = useMemo(() => (
-    buildSelectedDeviceTrack(deviceTracks, selectedDevice)
-  ), [deviceTracks, selectedDevice]);
-
-  const latestPoint = selectedDeviceTrack?.points?.[selectedDeviceTrack.points.length - 1] || null;
-
-  const fixSvidSet = useMemo(() => buildFixSvidSet(latestPoint), [latestPoint]);
-
-  const allSatelliteIds = useMemo(() => buildAllSatelliteIds(deviceTracks), [deviceTracks]);
 
   // Get only satellites from selected device for globe 3D view
   const selectedDeviceSatelliteIds = useMemo(() => {
-    if (!latestPoint?.raw?.status) {
-      return [];
-    }
+    if (!latestPoint?.raw?.status) return [];
     const ids = latestPoint.raw.status.map((s) => s.svid);
     return [...new Set(ids)].sort((a, b) => a - b);
   }, [latestPoint]);
