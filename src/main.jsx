@@ -18,6 +18,8 @@ import { mapRoute } from './routes/map';
 import { historyRoute } from './routes/history';
 import { snapshotsRoute } from './routes/snapshots';
 import { settingsRoute } from './routes/settings';
+import { deviceConfigRoute } from './routes/device-config';
+import { alertHistoryRoute } from './routes/alert-history';
 import { catchAllRoute } from './routes/$';
 
 const routeTree = rootRoute.addChildren([
@@ -34,6 +36,8 @@ const routeTree = rootRoute.addChildren([
   historyRoute,
   snapshotsRoute,
   settingsRoute,
+  deviceConfigRoute,
+  alertHistoryRoute,
   catchAllRoute,
 ]);
 const router = createRouter({ routeTree });

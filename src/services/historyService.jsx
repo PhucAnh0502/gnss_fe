@@ -17,28 +17,125 @@ export const buildRouteMapData = (historyData) => {
     return null;
   }
 
-  const coordinates = historyData
-    .map((item) => item.location?.coordinates)
-    .filter(Boolean)
-    .map(([lng, lat]) => [lat, lng]);
+  // Quality filter: remove GPS jitter (indoor/weak signal points)
+  const filteredData = filterLowQualityPoints(historyData);
 
-  if (coordinates.length === 0) {
+  if (filteredData.length === 0) {
     return null;
   }
 
-  const latitudes = coordinates.map(([lat]) => lat);
-  const longitudes = coordinates.map(([, lng]) => lng);
+  // Build segments based on segmentFlag
+  const segments = [];
+  let currentSegment = [];
 
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLng = Math.min(...longitudes);
-  const maxLng = Math.max(...longitudes);
+  for (const item of filteredData) {
+    const coords = item.location?.coordinates;
+    if (!coords) continue;
+
+    const [lng, lat] = coords;
+    const point = [lat, lng];
+    const flag = item.segmentFlag || 'none';
+
+    if (flag === 'start') {
+      // Start a new segment
+      if (currentSegment.length > 0) {
+        segments.push(currentSegment);
+      }
+      currentSegment = [point];
+    } else if (flag === 'end') {
+      currentSegment.push(point);
+      segments.push(currentSegment);
+      currentSegment = [];
+    } else {
+      currentSegment.push(point);
+    }
+  }
+
+  // Don't forget the last segment
+  if (currentSegment.length > 0) {
+    segments.push(currentSegment);
+  }
+
+  // Flatten all points for bounds calculation
+  const allPoints = segments.flat();
+  if (allPoints.length === 0) return null;
+
+  const latitudes = allPoints.map(([lat]) => lat);
+  const longitudes = allPoints.map(([, lng]) => lng);
 
   return {
-    center: [(minLat + maxLat) / 2, (minLng + maxLng) / 2],
-    polyline: coordinates,
+    center: [(Math.min(...latitudes) + Math.max(...latitudes)) / 2, (Math.min(...longitudes) + Math.max(...longitudes)) / 2],
+    polyline: allPoints,  // Keep for backward compat (bounds, selected point)
+    segments,             // NEW: array of polyline arrays
   };
 };
+
+/**
+ * Filter out low-quality GPS points that cause jitter on the map.
+ * Criteria:
+ * - Remove points with hdop > 8 (very poor geometry)
+ * - Remove points with satellites_used < 4 (insufficient fix)
+ * - Remove "teleport" points (impossible speed between consecutive points)
+ */
+function filterLowQualityPoints(historyData) {
+  const MAX_HDOP = 8;
+  const MIN_SAT_USED = 4;
+  const MAX_SPEED_KMH = 200; // max realistic speed
+
+  const filtered = [];
+
+  for (let i = 0; i < historyData.length; i++) {
+    const item = historyData[i];
+
+    // Always keep start/end points for segment integrity
+    if (item.segmentFlag === 'start' || item.segmentFlag === 'end') {
+      filtered.push(item);
+      continue;
+    }
+
+    // Filter by HDOP
+    if (item.hdop > MAX_HDOP && item.hdop !== 0) continue;
+
+    // Filter by satellite count
+    if (item.satellites_used < MIN_SAT_USED && item.satellites_used !== 0) continue;
+
+    // Filter by teleport (check against previous valid point)
+    if (filtered.length > 0) {
+      const prev = filtered[filtered.length - 1];
+      const prevCoords = prev.location?.coordinates;
+      const currCoords = item.location?.coordinates;
+
+      if (prevCoords && currCoords) {
+        const dist = haversineDistance(prevCoords[1], prevCoords[0], currCoords[1], currCoords[0]);
+        const timeDiff = (new Date(item.timestamp) - new Date(prev.timestamp)) / 1000; // seconds
+
+        if (timeDiff > 0) {
+          const speedKmh = (dist / timeDiff) * 3.6;
+          if (speedKmh > MAX_SPEED_KMH) continue; // teleport - skip
+        }
+      }
+    }
+
+    filtered.push(item);
+  }
+
+  return filtered;
+}
+
+/**
+ * Calculate distance between two points using Haversine formula.
+ * Returns distance in meters.
+ */
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
 export async function fetchHistoryData({
   axiosInstance,

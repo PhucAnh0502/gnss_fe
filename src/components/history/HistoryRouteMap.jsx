@@ -55,19 +55,22 @@ export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
               crossOrigin="anonymous"
             />
 
-            {/* Continuous polyline - the main route */}
-            {mapData.polyline.length > 1 && (
-              <Polyline
-                positions={mapData.polyline}
-                pathOptions={{
-                  color: '#3b82f6',
-                  weight: 4,
-                  opacity: 0.9,
-                  lineCap: 'round',
-                  lineJoin: 'round',
-                }}
-              />
-            )}
+            {/* Route segments - each tracking session is a separate polyline */}
+            {(mapData.segments || [mapData.polyline]).map((segment, idx) => (
+              segment.length > 1 && (
+                <Polyline
+                  key={`segment-${idx}`}
+                  positions={segment}
+                  pathOptions={{
+                    color: '#3b82f6',
+                    weight: 4,
+                    opacity: 0.9,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  }}
+                />
+              )
+            ))}
 
             {/* Start marker */}
             {startPoint && (

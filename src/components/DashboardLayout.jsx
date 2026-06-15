@@ -7,19 +7,23 @@ import {
   Map,
   Camera,
   Settings,
+  SlidersHorizontal,
   LogOut,
   Menu,
   X,
   ChevronRight,
+  Bell,
 } from 'lucide-react';
 import { logout } from '../lib/auth';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { label: 'Devices', icon: Smartphone, path: '/devices' },
+  { label: 'Device Config', icon: SlidersHorizontal, path: '/device-config' },
   { label: 'History', icon: HistoryIcon, path: '/history' },
   { label: 'Live Map', icon: Map, path: '/map' },
   { label: 'Snapshots', icon: Camera, path: '/snapshots' },
+  { label: 'Alert History', icon: Bell, path: '/alert-history' },
 ];
 
 export function DashboardLayout({ children }) {

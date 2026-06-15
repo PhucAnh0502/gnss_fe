@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Globe, Map as MapIcon, Satellite, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { Map as MapIcon, Satellite, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { MapTrackingTab } from '../components/map/MapTrackingTab';
-import { GlobeTrackingTab } from '../components/map/GlobeTrackingTab';
+import { SkyplotTab } from '../components/map/SkyplotTab';
 import { useMap } from '../features/useMap';
 import { HANOI_CENTER } from '../services/mapService.jsx';
+import { getProfile } from '../services/authService.jsx';
 
 const tabClass = (isActive) => (
   `px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
@@ -19,6 +20,10 @@ export default function MapPage() {
   const [activeTab, setActiveTab] = useState('map');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deviceSearch, setDeviceSearch] = useState('');
+
+  // Admin detection for alert zone management
+  const { data: profile } = useQuery({ queryKey: ['user-profile'], queryFn: getProfile, staleTime: 5 * 60 * 1000 });
+  const isAdmin = profile?.role === 'admin';
 
   const {
     selectedDeviceId,
@@ -62,7 +67,7 @@ export default function MapPage() {
               <span className="inline-flex items-center gap-2"><MapIcon className="w-4 h-4" /> Map</span>
             </button>
             <button type="button" className={tabClass(activeTab === 'globe')} onClick={() => setActiveTab('globe')}>
-              <span className="inline-flex items-center gap-2"><Globe className="w-4 h-4" /> Globe 3D</span>
+              <span className="inline-flex items-center gap-2"><Satellite className="w-4 h-4" /> Skyplot</span>
             </button>
           </div>
         </div>
@@ -74,45 +79,14 @@ export default function MapPage() {
               devicePoints={devicePoints}
               selectedTrack={selectedDeviceTrack?.points || []}
               selectedDeviceCode={selectedDevice?.deviceCode}
+              isAdmin={isAdmin}
             />
           ) : (
-            <GlobeTrackingTab
-              satelliteIds={selectedDevice ? selectedDeviceSatelliteIds : allSatelliteIds}
-              highlightedIds={fixSvidSet}
-              devicePoints={devicePoints}
-              selectedDeviceCode={selectedDevice?.deviceCode || null}
-              focusPosition={latestPoint ? { lat: latestPoint.mapLat, lng: latestPoint.mapLng } : null}
+            <SkyplotTab
               satelliteStatuses={latestPoint?.raw?.status || []}
+              selectedDeviceCode={selectedDevice?.deviceCode || null}
             />
           )}
-
-          <AnimatePresence mode="wait">
-            {selectedDevice && (
-              <div
-                key={selectedDevice.id}
-                className="absolute left-4 top-4 z-900 max-w-md rounded-xl border border-slate-700 bg-slate-950/88 p-4 text-xs md:text-sm text-slate-200 backdrop-blur"
-              >
-                <h3 className="font-semibold text-blue-200 mb-2">{activeTab === 'map' ? 'GNSS RawData (Mock / Live)' : 'Satellite Fix Info'}</h3>
-                {latestPoint ? (
-                  <div className="space-y-1">
-                    <p><span className="text-slate-400">Source:</span> {selectedDeviceTrack?.isLive ? 'Live Socket' : 'History API'}</p>
-                    <p><span className="text-slate-400">Device:</span> {selectedDevice?.deviceCode}</p>
-                    <p><span className="text-slate-400">Timestamp:</span> {new Date(latestPoint.ts * 1000).toLocaleString()}</p>
-                    <p><span className="text-slate-400">satUsed:</span> {latestPoint.satUsed} / sat: {latestPoint.sat}</p>
-                    <p><span className="text-slate-400">avgCn0:</span> {latestPoint.avgCn0} dB-Hz</p>
-                    <p><span className="text-slate-400">Fix satellites:</span> {fixSvidSet.size ? [...fixSvidSet].join(', ') : 'none'}</p>
-                    {activeTab === 'map' && latestPoint.raw?.clock && (
-                      <pre className="mt-2 max-h-40 overflow-auto rounded bg-slate-900/80 p-2 text-[11px] leading-snug text-slate-300">
-{JSON.stringify(latestPoint.raw.clock, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-slate-400">Click a device in the sidebar to highlight it and show its track.</p>
-                )}
-              </div>
-            )}
-          </AnimatePresence>
 
           <div className={`absolute top-0 right-0 h-full z-950 transition-all duration-300 ${sidebarOpen ? 'w-80' : 'w-12'}`}>
             <div className="h-full border-l border-slate-800 bg-slate-950/92 backdrop-blur flex flex-col">
