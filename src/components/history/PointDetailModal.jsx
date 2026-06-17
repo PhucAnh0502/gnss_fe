@@ -18,7 +18,7 @@ import axiosInstance from '../../api/axiosInstance';
 export function PointDetailModal({ point, pointIndex, onClose }) {
   const [rawData, setRawData] = useState(undefined); // undefined = not fetched, null = no data
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('satellites');
+  const [activeTab, setActiveTab] = useState('skyplot');
 
   useEffect(() => {
     if (!point?.id) {
@@ -58,6 +58,7 @@ export function PointDetailModal({ point, pointIndex, onClose }) {
   const time = new Date(point.timestamp);
 
   const tabs = [
+    { id: 'skyplot', label: 'Skyplot' },
     { id: 'satellites', label: 'Satellites' },
     { id: 'measurements', label: 'Measurements' },
     { id: 'clock', label: 'Clock' },
@@ -172,6 +173,7 @@ export function PointDetailModal({ point, pointIndex, onClose }) {
 
           {!isLoading && rawData && (
             <>
+              {activeTab === 'skyplot' && <SkyplotTab rawData={rawData} />}
               {activeTab === 'satellites' && <SatellitesTab rawData={rawData} />}
               {activeTab === 'measurements' && <MeasurementsTab rawData={rawData} />}
               {activeTab === 'clock' && <ClockTab rawData={rawData} />}
@@ -180,6 +182,120 @@ export function PointDetailModal({ point, pointIndex, onClose }) {
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+/* ─── Tab: Skyplot (Polar Chart) ─── */
+function SkyplotTab({ rawData }) {
+  if (!rawData?.statusRaw || rawData.statusRaw.length === 0) {
+    return <EmptyState text="No satellite status data for skyplot." />;
+  }
+
+  const satellites = rawData.statusRaw;
+  const size = 360;
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxRadius = size / 2 - 30;
+
+  // Convert elevation (0=horizon, 90=zenith) + azimuth to x,y on polar chart
+  const satToXY = (sat) => {
+    const elev = sat.elevationDegrees || 0;
+    const azim = sat.azimuthDegrees || 0;
+    // radius: 90° elevation = center, 0° = edge
+    const r = maxRadius * (1 - elev / 90);
+    // azimuth: 0°=North(up), clockwise
+    const angle = (azim - 90) * (Math.PI / 180);
+    return {
+      x: cx + r * Math.cos(angle),
+      y: cy + r * Math.sin(angle),
+    };
+  };
+
+  const getColor = (sat) => {
+    const colors = { 1: '#3b82f6', 3: '#ef4444', 5: '#10b981', 6: '#f59e0b', 4: '#f97316', 2: '#6b7280', 7: '#a855f7' };
+    return colors[sat.constellationType] || '#6b7280';
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {/* Polar chart */}
+      <div className="relative">
+        <svg width={size} height={size} className="bg-slate-800/50 rounded-xl border border-slate-700/40">
+          {/* Grid circles (elevation rings) */}
+          {[0, 30, 60, 90].map((elev) => {
+            const r = maxRadius * (1 - elev / 90);
+            return (
+              <circle key={elev} cx={cx} cy={cy} r={r} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray={elev === 0 ? 'none' : '4 4'} />
+            );
+          })}
+
+          {/* Cardinal direction lines */}
+          {[0, 45, 90, 135].map((angle) => {
+            const rad = (angle - 90) * (Math.PI / 180);
+            return (
+              <line key={angle} x1={cx} y1={cy} x2={cx + maxRadius * Math.cos(rad)} y2={cy + maxRadius * Math.sin(rad)} stroke="#334155" strokeWidth="0.5" />
+            );
+          })}
+          {[180, 225, 270, 315].map((angle) => {
+            const rad = (angle - 90) * (Math.PI / 180);
+            return (
+              <line key={angle} x1={cx} y1={cy} x2={cx + maxRadius * Math.cos(rad)} y2={cy + maxRadius * Math.sin(rad)} stroke="#334155" strokeWidth="0.5" />
+            );
+          })}
+
+          {/* Direction labels */}
+          <text x={cx} y={18} textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600">N</text>
+          <text x={size - 14} y={cy + 4} textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600">E</text>
+          <text x={cx} y={size - 8} textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600">S</text>
+          <text x={14} y={cy + 4} textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600">W</text>
+
+          {/* Elevation labels */}
+          <text x={cx + 4} y={cy - maxRadius * (1 - 30/90) + 4} fill="#64748b" fontSize="9">30°</text>
+          <text x={cx + 4} y={cy - maxRadius * (1 - 60/90) + 4} fill="#64748b" fontSize="9">60°</text>
+
+          {/* Satellite dots */}
+          {satellites.map((sat, idx) => {
+            const { x, y } = satToXY(sat);
+            const color = getColor(sat);
+            const isUsed = sat.usedInFix;
+            const r = isUsed ? 7 : 5;
+
+            return (
+              <g key={idx}>
+                {isUsed && <circle cx={x} cy={y} r={r + 3} fill={color} opacity="0.15" />}
+                <circle cx={x} cy={y} r={r} fill={color} opacity={isUsed ? 1 : 0.5} stroke={isUsed ? '#fff' : 'none'} strokeWidth="1.5" />
+                <text x={x} y={y - r - 3} textAnchor="middle" fill={color} fontSize="8" fontWeight="600">
+                  {sat.svid}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
+        {[
+          { type: 1, name: 'GPS', color: '#3b82f6' },
+          { type: 3, name: 'GLONASS', color: '#ef4444' },
+          { type: 5, name: 'BeiDou', color: '#10b981' },
+          { type: 6, name: 'Galileo', color: '#f59e0b' },
+        ].map((item) => (
+          <span key={item.type} className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+            <span className="text-slate-300">{item.name}</span>
+          </span>
+        ))}
+        <span className="flex items-center gap-1.5 ml-3 pl-3 border-l border-slate-700">
+          <span className="w-3 h-3 rounded-full border-2 border-white bg-blue-500" />
+          <span className="text-slate-400">In Fix</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-500 opacity-50" />
+          <span className="text-slate-400">Visible</span>
+        </span>
+      </div>
+    </div>
   );
 }
 

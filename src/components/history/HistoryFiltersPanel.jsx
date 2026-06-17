@@ -35,11 +35,11 @@ export function HistoryFiltersPanel({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">Start Date</label>
+            <label className="block text-sm font-semibold text-white mb-2">Start Date & Time</label>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-slate-400" />
               <input
-                type="date"
+                type="datetime-local"
                 value={startDate}
                 onChange={(event) => onStartDateChange(event.target.value)}
                 className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-blue-400"
@@ -47,11 +47,11 @@ export function HistoryFiltersPanel({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">End Date</label>
+            <label className="block text-sm font-semibold text-white mb-2">End Date & Time</label>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-slate-400" />
               <input
-                type="date"
+                type="datetime-local"
                 value={endDate}
                 onChange={(event) => onEndDateChange(event.target.value)}
                 className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-blue-400"

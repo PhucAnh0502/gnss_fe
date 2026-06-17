@@ -7,10 +7,19 @@ export const DEFAULT_LOOKBACK_DAYS = 7;
 export const getDefaultStartDate = () => {
   const date = new Date();
   date.setDate(date.getDate() - DEFAULT_LOOKBACK_DAYS);
-  return date.toISOString().split('T')[0];
+  return toDatetimeLocalString(date);
 };
 
-export const getDefaultEndDate = () => new Date().toISOString().split('T')[0];
+export const getDefaultEndDate = () => toDatetimeLocalString(new Date());
+
+function toDatetimeLocalString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
 
 export const buildRouteMapData = (historyData) => {
   if (historyData.length === 0) {
@@ -154,11 +163,9 @@ export async function fetchHistoryData({
 
   onLoadingChange(true);
   try {
-    // Convert date strings to UTC timestamps (fix timezone bug)
-    const [startYear, startMonth, startDay] = startDate.split('-');
-    const [endYear, endMonth, endDay] = endDate.split('-');
-    const from = new Date(Date.UTC(startYear, startMonth - 1, startDay)).toISOString();
-    const to = new Date(Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999)).toISOString();
+    // Convert datetime-local strings to UTC ISO timestamps
+    const from = new Date(startDate).toISOString();
+    const to = new Date(endDate).toISOString();
 
     const response = await axiosInstance.get(`/tracking/history/${deviceId}`, {
       params: {
