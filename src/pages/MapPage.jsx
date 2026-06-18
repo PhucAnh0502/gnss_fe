@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Map as MapIcon, Satellite, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
+import { Map as MapIcon, ChevronLeft, ChevronRight, Loader2, Search, Satellite } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { MapTrackingTab } from '../components/map/MapTrackingTab';
-import { SkyplotTab } from '../components/map/SkyplotTab';
 import { useMap } from '../features/useMap';
 import { HANOI_CENTER } from '../services/mapService.jsx';
 import { getProfile } from '../services/authService.jsx';
@@ -17,7 +16,6 @@ const tabClass = (isActive) => (
 );
 
 export default function MapPage() {
-  const [activeTab, setActiveTab] = useState('map');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deviceSearch, setDeviceSearch] = useState('');
 
@@ -58,22 +56,15 @@ export default function MapPage() {
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Map & Globe Tracking</h1>
-            <p className="text-slate-400 mt-1">Switch between Hanoi map tracking and satellite globe visualization.</p>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">Map Tracking</h1>
+            <p className="text-slate-400 mt-1">Real-time device tracking on map.</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <button type="button" className={tabClass(activeTab === 'map')} onClick={() => setActiveTab('map')}>
-              <span className="inline-flex items-center gap-2"><MapIcon className="w-4 h-4" /> Map</span>
-            </button>
-            <button type="button" className={tabClass(activeTab === 'globe')} onClick={() => setActiveTab('globe')}>
-              <span className="inline-flex items-center gap-2"><Satellite className="w-4 h-4" /> Skyplot</span>
-            </button>
           </div>
         </div>
 
         <div className="mt-6 relative h-[clamp(630px,67vh,800px)] rounded-2xl border border-slate-800 bg-slate-950/65 overflow-hidden">
-          {activeTab === 'map' ? (
             <MapTrackingTab
               center={HANOI_CENTER}
               devicePoints={devicePoints}
@@ -81,12 +72,6 @@ export default function MapPage() {
               selectedDeviceCode={selectedDevice?.deviceCode}
               isAdmin={isAdmin}
             />
-          ) : (
-            <SkyplotTab
-              satelliteStatuses={latestPoint?.raw?.status || []}
-              selectedDeviceCode={selectedDevice?.deviceCode || null}
-            />
-          )}
 
           <div className={`absolute top-0 right-0 h-full z-950 transition-all duration-300 ${sidebarOpen ? 'w-80' : 'w-12'}`}>
             <div className="h-full border-l border-slate-800 bg-slate-950/92 backdrop-blur flex flex-col">
