@@ -521,21 +521,20 @@ export function MapTrackingTab({ center, devicePoints, selectedTrack, selectedDe
         {/* Alert Zone polygons */}
         {zonePositions.map((zone, idx) => {
           if (zone.positions.length < 3) return null;
-          const color = getZoneColor(idx);
+          const isSelected = selectedZone?.id === zone.id;
           return (
             <Polygon
               key={zone.id}
               positions={zone.positions}
               pathOptions={{
-                color,
-                fillColor: color,
-                fillOpacity: selectedZone?.id === zone.id ? 0.35 : 0.15,
-                weight: selectedZone?.id === zone.id ? 3 : 2,
+                color: '#ef4444',
+                fillColor: '#ef4444',
+                fillOpacity: 0.12,
+                weight: 2,
                 dashArray: '6 4',
               }}
-              eventHandlers={{ click: () => handleZoneClick(zone) }}
             >
-              <Tooltip direction="center" permanent className="zone-label-tooltip">
+              <Tooltip direction="center" permanent className="!bg-slate-900/80 !border-slate-600 !rounded-lg !px-2 !py-1 !text-[11px] !font-semibold !text-red-300 !shadow-lg">
                 {zone.name}
               </Tooltip>
             </Polygon>

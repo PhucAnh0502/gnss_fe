@@ -33,11 +33,13 @@ export const buildRouteMapData = (historyData) => {
     return null;
   }
 
-  // Build segments based on segmentFlag
-  const segments = [];
+  // Build segments based on segmentFlag + auto-split on large time/distance gaps
+  const segmentsWithMeta = []; // Each: { points: [[lat,lng],...], startTime, endTime }
   let currentSegment = [];
+  let currentTimestamps = [];
 
-  for (const item of filteredData) {
+  for (let i = 0; i < filteredData.length; i++) {
+    const item = filteredData[i];
     const coords = item.location?.coordinates;
     if (!coords) continue;
 
@@ -46,24 +48,49 @@ export const buildRouteMapData = (historyData) => {
     const flag = item.segmentFlag || 'none';
 
     if (flag === 'start') {
-      // Start a new segment
       if (currentSegment.length > 0) {
-        segments.push(currentSegment);
+        segmentsWithMeta.push({ points: currentSegment, startTime: currentTimestamps[0], endTime: currentTimestamps[currentTimestamps.length - 1] });
       }
       currentSegment = [point];
+      currentTimestamps = [item.timestamp];
     } else if (flag === 'end') {
       currentSegment.push(point);
-      segments.push(currentSegment);
+      currentTimestamps.push(item.timestamp);
+      segmentsWithMeta.push({ points: currentSegment, startTime: currentTimestamps[0], endTime: currentTimestamps[currentTimestamps.length - 1] });
       currentSegment = [];
+      currentTimestamps = [];
     } else {
+      // Auto-split: if time gap > 5 minutes OR distance > 1km from previous point
+      if (currentSegment.length > 0 && i > 0) {
+        const prevItem = filteredData[i - 1];
+        const timeDiff = (new Date(item.timestamp) - new Date(prevItem.timestamp)) / 1000;
+        const prevCoords = prevItem.location?.coordinates;
+
+        let shouldSplit = timeDiff > 300; // 5 minute gap
+
+        if (!shouldSplit && prevCoords) {
+          const dist = haversineDistance(prevCoords[1], prevCoords[0], lat, lng);
+          shouldSplit = dist > 1000; // 1km jump
+        }
+
+        if (shouldSplit) {
+          segmentsWithMeta.push({ points: currentSegment, startTime: currentTimestamps[0], endTime: currentTimestamps[currentTimestamps.length - 1] });
+          currentSegment = [point];
+          currentTimestamps = [item.timestamp];
+          continue;
+        }
+      }
       currentSegment.push(point);
+      currentTimestamps.push(item.timestamp);
     }
   }
 
   // Don't forget the last segment
   if (currentSegment.length > 0) {
-    segments.push(currentSegment);
+    segmentsWithMeta.push({ points: currentSegment, startTime: currentTimestamps[0], endTime: currentTimestamps[currentTimestamps.length - 1] });
   }
+
+  const segments = segmentsWithMeta.map((s) => s.points);
 
   // Flatten all points for bounds calculation
   const allPoints = segments.flat();
@@ -74,8 +101,9 @@ export const buildRouteMapData = (historyData) => {
 
   return {
     center: [(Math.min(...latitudes) + Math.max(...latitudes)) / 2, (Math.min(...longitudes) + Math.max(...longitudes)) / 2],
-    polyline: allPoints,  // Keep for backward compat (bounds, selected point)
-    segments,             // NEW: array of polyline arrays
+    polyline: allPoints,
+    segments,
+    segmentsWithMeta,
   };
 };
 

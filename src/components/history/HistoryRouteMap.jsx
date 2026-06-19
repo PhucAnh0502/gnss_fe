@@ -24,9 +24,6 @@ export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
     return null;
   }
 
-  const startPoint = mapData.polyline[0];
-  const endPoint = mapData.polyline[mapData.polyline.length - 1];
-
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/40 backdrop-blur-sm overflow-hidden">
       <div className="p-4">
@@ -72,14 +69,14 @@ export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
                   key={zone.id}
                   positions={positions}
                   pathOptions={{
-                    color: '#f59e0b',
-                    fillColor: '#f59e0b',
-                    fillOpacity: 0.1,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.12,
                     weight: 2,
                     dashArray: '6 4',
                   }}
                 >
-                  <Tooltip direction="center" permanent className="!bg-transparent !border-0 !shadow-none !text-amber-400 !text-[10px] !font-semibold">
+                  <Tooltip direction="center" permanent className="!bg-slate-900/80 !border-slate-600 !rounded-lg !px-2 !py-1 !text-[11px] !font-semibold !text-red-300 !shadow-lg">
                     {zone.name}
                   </Tooltip>
                 </Polygon>
@@ -103,47 +100,54 @@ export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
               )
             ))}
 
-            {/* Start marker */}
-            {startPoint && (
-              <CircleMarker
-                center={startPoint}
-                radius={8}
-                pathOptions={{
-                  fillColor: '#22c55e',
-                  color: '#ffffff',
-                  weight: 2.5,
-                  fillOpacity: 1,
-                }}
-              >
-                <Popup>
-                  <div className="text-xs font-medium">
-                    <p className="text-emerald-700 font-semibold">Start Point</p>
-                    <p className="text-gray-600">{startPoint[0].toFixed(6)}, {startPoint[1].toFixed(6)}</p>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            )}
-
-            {/* End marker */}
-            {endPoint && mapData.polyline.length > 1 && (
-              <CircleMarker
-                center={endPoint}
-                radius={8}
-                pathOptions={{
-                  fillColor: '#ef4444',
-                  color: '#ffffff',
-                  weight: 2.5,
-                  fillOpacity: 1,
-                }}
-              >
-                <Popup>
-                  <div className="text-xs font-medium">
-                    <p className="text-red-700 font-semibold">End Point</p>
-                    <p className="text-gray-600">{endPoint[0].toFixed(6)}, {endPoint[1].toFixed(6)}</p>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            )}
+            {/* Start and End markers for each segment */}
+            {(mapData.segmentsWithMeta || []).map((seg, idx) => {
+              if (!seg.points || seg.points.length < 2) return null;
+              const segStart = seg.points[0];
+              const segEnd = seg.points[seg.points.length - 1];
+              const startTime = seg.startTime ? new Date(seg.startTime).toLocaleString('vi-VN') : '';
+              const endTime = seg.endTime ? new Date(seg.endTime).toLocaleString('vi-VN') : '';
+              return (
+                <span key={`markers-${idx}`}>
+                  <CircleMarker
+                    center={segStart}
+                    radius={8}
+                    pathOptions={{
+                      fillColor: '#22c55e',
+                      color: '#ffffff',
+                      weight: 2.5,
+                      fillOpacity: 1,
+                    }}
+                  >
+                    <Popup>
+                      <div className="text-xs font-medium">
+                        <p className="text-emerald-700 font-semibold">Start (Segment {idx + 1})</p>
+                        <p className="text-gray-600">{segStart[0].toFixed(6)}, {segStart[1].toFixed(6)}</p>
+                        {startTime && <p className="text-gray-500 mt-1">{startTime}</p>}
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                  <CircleMarker
+                    center={segEnd}
+                    radius={8}
+                    pathOptions={{
+                      fillColor: '#ef4444',
+                      color: '#ffffff',
+                      weight: 2.5,
+                      fillOpacity: 1,
+                    }}
+                  >
+                    <Popup>
+                      <div className="text-xs font-medium">
+                        <p className="text-red-700 font-semibold">End (Segment {idx + 1})</p>
+                        <p className="text-gray-600">{segEnd[0].toFixed(6)}, {segEnd[1].toFixed(6)}</p>
+                        {endTime && <p className="text-gray-500 mt-1">🕐 {endTime}</p>}
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                </span>
+              );
+            })}
 
             {/* Selected point marker */}
             {selectedPointIndex !== null && mapData.polyline[selectedPointIndex] && (
