@@ -10,10 +10,13 @@ import {
   Satellite,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { UserDashboard } from '../components/dashboard/UserDashboard';
 import { useDashboard } from '../features/useDashboard';
+import { getProfile } from '../services/authService.jsx';
 
 const MotionDiv = motion.div;
 const MotionSection = motion.section;
@@ -95,6 +98,231 @@ const buildAreaPath = (series, width, height, padding) => {
   return { line, area, points };
 };
 
+function ChartWithTooltip({ telemetrySeries, devices = [] }) {
+  const [hovered, setHovered] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedDevices, setSelectedDevices] = useState(() => 
+    devices.map((d) => d.deviceCode)
+  );
+
+  // Update selectedDevices when devices change
+  const allCodes = devices.map((d) => d.deviceCode).join(',');
+  useMemo(() => {
+    setSelectedDevices(devices.map((d) => d.deviceCode));
+  }, [allCodes]);
+
+  const toggleDevice = (code) => {
+    setSelectedDevices((prev) => 
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
+  const TRACK_COLORS = ['#22d3ee', '#f97316', '#a78bfa', '#34d399', '#f43f5e', '#eab308', '#60a5fa', '#fb923c'];
+
+  // Build all device entries (including ones without data)
+  const allDeviceEntries = useMemo(() => {
+    return devices.map((device, index) => {
+      const series = telemetrySeries.find((s) => s.deviceCode === device.deviceCode);
+      return {
+        deviceCode: device.deviceCode,
+        deviceName: device.deviceName,
+        color: series?.color || TRACK_COLORS[index % TRACK_COLORS.length],
+        hasData: !!series,
+      };
+    });
+  }, [devices, telemetrySeries]);
+
+  const visibleSeries = telemetrySeries.filter((s) => selectedDevices.includes(s.deviceCode));
+
+  // For devices without data but selected, add a flat line at 0
+  const allVisibleSeries = useMemo(() => {
+    const result = [...visibleSeries];
+    allDeviceEntries.forEach((entry) => {
+      if (!entry.hasData && selectedDevices.includes(entry.deviceCode)) {
+        // Create a flat line at 0% with 2 points (start and end)
+        result.push({
+          deviceCode: entry.deviceCode,
+          deviceName: entry.deviceName,
+          color: entry.color,
+          points: [
+            { x: 0, label: '—', value: 0 },
+            { x: 23, label: '—', value: 0 },
+          ],
+        });
+      }
+    });
+    return result;
+  }, [visibleSeries, allDeviceEntries, selectedDevices]);
+
+  // Build chart paths for each visible device
+  const deviceCharts = useMemo(() => {
+    const padding = 14;
+    const width = 600;
+    const height = 180;
+    const innerWidth = width - padding * 2;
+    const innerHeight = height - padding * 2;
+
+    return allVisibleSeries.map((series) => {
+      if (!series.points.length) return null;
+      const stepX = series.points.length > 1 ? innerWidth / (series.points.length - 1) : innerWidth;
+
+      const points = series.points.map((item, index) => ({
+        x: padding + index * stepX,
+        y: padding + ((100 - item.value) / 100) * innerHeight,
+        value: item.value,
+        label: item.label,
+      }));
+
+      const line = points
+        .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+        .join(' ');
+
+      return { ...series, chartPoints: points, linePath: line };
+    }).filter(Boolean);
+  }, [allVisibleSeries]);
+
+  const handleMouseMove = (e) => {
+    if (!deviceCharts.length) return;
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = ((e.clientX - rect.left) / rect.width) * 600;
+
+    let closest = null;
+    let minDist = Infinity;
+    deviceCharts.forEach((dc) => {
+      dc.chartPoints.forEach((point) => {
+        const dist = Math.abs(point.x - mouseX);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = { ...point, deviceCode: dc.deviceCode, color: dc.color };
+        }
+      });
+    });
+    if (closest && minDist < 30) {
+      setHovered(closest);
+    } else {
+      setHovered(null);
+    }
+  };
+
+  const selectedCount = selectedDevices.length;
+
+  return (
+    <div className="relative">
+      {/* Dropdown checkbox for devices */}
+      <div className="relative mb-3">
+        <button
+          type="button"
+          onClick={() => setDropdownOpen((v) => !v)}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700/60 transition-colors"
+        >
+          <span>{selectedCount}/{allDeviceEntries.length} devices selected</span>
+          <svg className={`w-3 h-3 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </button>
+
+        {dropdownOpen && (
+          <div className="absolute top-full left-0 mt-1 z-50 w-64 rounded-lg border border-slate-700 bg-slate-900/95 backdrop-blur-sm shadow-xl py-1 max-h-48 overflow-y-auto">
+            {allDeviceEntries.map((entry) => (
+              <label
+                key={entry.deviceCode}
+                className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-800/60 cursor-pointer transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedDevices.includes(entry.deviceCode)}
+                  onChange={() => toggleDevice(entry.deviceCode)}
+                  className="sr-only"
+                />
+                <span
+                  className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-colors ${
+                    selectedDevices.includes(entry.deviceCode)
+                      ? 'border-transparent'
+                      : 'border-slate-600'
+                  }`}
+                  style={{ backgroundColor: selectedDevices.includes(entry.deviceCode) ? entry.color : 'transparent' }}
+                >
+                  {selectedDevices.includes(entry.deviceCode) && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  )}
+                </span>
+                <span className="text-xs text-slate-200 flex-1 truncate">{entry.deviceName}</span>
+                {!entry.hasData && (
+                  <span className="text-[10px] text-slate-500">no data</span>
+                )}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <svg
+        viewBox="0 0 600 180"
+        className="w-full h-48 cursor-crosshair"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Telemetry chart"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHovered(null)}
+      >
+        {/* Y-axis labels */}
+        <text x="8" y="20" fill="#64748b" fontSize="9">100%</text>
+        <text x="8" y="95" fill="#64748b" fontSize="9">50%</text>
+        <text x="8" y="172" fill="#64748b" fontSize="9">0%</text>
+
+        {deviceCharts.length > 0 ? (
+          <>
+            {deviceCharts.map((dc) => (
+              <path
+                key={dc.deviceCode}
+                d={dc.linePath}
+                fill="none"
+                stroke={dc.color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className="animate-[drawLine_1.5s_ease-out_both]"
+                style={{ strokeDasharray: 2000, strokeDashoffset: 0 }}
+              />
+            ))}
+
+            {hovered && (
+              <>
+                <line x1={hovered.x} y1="14" x2={hovered.x} y2="166" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+                <circle cx={hovered.x} cy={hovered.y} r="5" fill={hovered.color} stroke="#fff" strokeWidth="2" />
+              </>
+            )}
+          </>
+        ) : (
+          <text x="300" y="95" textAnchor="middle" fill="#94a3b8" fontSize="14">No telemetry data available</text>
+        )}
+
+        {/* X-axis time labels */}
+        {deviceCharts.length > 0 && deviceCharts[0].chartPoints
+          .filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 6)) === 0 || i === arr.length - 1)
+          .map((point, idx) => (
+            <text key={`t-${idx}`} x={point.x} y="178" textAnchor="middle" fill="#64748b" fontSize="8" className="select-none">
+              {point.label}
+            </text>
+          ))}
+      </svg>
+
+      {/* Tooltip */}
+      {hovered && (
+        <div
+          className="absolute pointer-events-none rounded-lg border border-slate-700 bg-slate-900/95 px-3 py-1.5 text-xs shadow-lg"
+          style={{
+            left: `${(hovered.x / 600) * 100}%`,
+            bottom: `${100 - (hovered.y / 180) * 100 + 12}%`,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <p className="font-semibold" style={{ color: hovered.color }}>{hovered.value}%</p>
+          <p className="text-slate-400">{hovered.label} · {hovered.deviceCode}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatCard({ item }) {
   const Icon = item.icon;
   return (
@@ -130,6 +358,23 @@ function formatRelativeTime(isoString) {
 }
 
 export default function DashboardPage() {
+  const { data: profile } = useQuery({ queryKey: ['user-profile'], queryFn: getProfile, staleTime: 5 * 60 * 1000 });
+  const isAdmin = profile?.role === 'admin';
+
+  // User dashboard for non-admin users
+  if (profile && !isAdmin) {
+    return (
+      <DashboardLayout>
+        <UserDashboard />
+      </DashboardLayout>
+    );
+  }
+
+  // Admin dashboard (default / while loading profile)
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
   const navigate = useNavigate();
 
   const {
@@ -200,8 +445,6 @@ export default function DashboardPage() {
 
   const telemetrySeries_ = useMemo(() => telemetrySeries, [telemetrySeries]);
 
-  const chart = useMemo(() => buildAreaPath(telemetrySeries_, 600, 180, 14), [telemetrySeries_]);
-
   const updatedAtLabel = updatedAt ? formatRelativeTime(updatedAt) : '';
 
   return (
@@ -249,58 +492,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-5 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-              <svg viewBox="0 0 600 180" className="w-full h-48" preserveAspectRatio="none" role="img" aria-label="Telemetry chart">
-                <defs>
-                  <linearGradient id="signalLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#22d3ee" />
-                    <stop offset="100%" stopColor="#38bdf8" />
-                  </linearGradient>
-                  <linearGradient id="signalArea" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#0f172a" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Y-axis labels */}
-                <text x="8" y="20" fill="#64748b" fontSize="9">100%</text>
-                <text x="8" y="95" fill="#64748b" fontSize="9">50%</text>
-                <text x="8" y="172" fill="#64748b" fontSize="9">0%</text>
-
-                {chart ? (
-                  <>
-                    <path d={chart.area} fill="url(#signalArea)" />
-                    <path d={chart.line} fill="none" stroke="url(#signalLine)" strokeWidth="3.5" strokeLinecap="round" />
-                    {/* Data point dots */}
-                    {chart.points.map((point, i) => (
-                      <circle key={i} cx={point.x} cy={point.y} r="4" fill="#22d3ee" stroke="#0f172a" strokeWidth="2" />
-                    ))}
-                  </>
-                ) : (
-                  <text x="300" y="95" textAnchor="middle" fill="#94a3b8" fontSize="14">No telemetry data available</text>
-                )}
-
-                {/* X-axis device labels */}
-                {telemetrySeries_.length > 0 && chart?.points && chart.points.map((point, i) => (
-                  <text
-                    key={`label-${i}`}
-                    x={point.x}
-                    y="178"
-                    textAnchor="middle"
-                    fill="#64748b"
-                    fontSize="8"
-                    className="select-none"
-                  >
-                    {telemetrySeries_[i]?.label?.slice(-4) || ''}
-                  </text>
-                ))}
-              </svg>
+              <ChartWithTooltip telemetrySeries={telemetrySeries_} devices={devices} />
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-3">
                 <p className="text-xs text-slate-400">Peak Quality</p>
                 <p className="mt-1 text-xl font-semibold text-sky-300">
-                  {telemetrySeries_.length ? Math.max(...telemetrySeries_.map((item) => item.value)).toFixed(1) : '0.0'}%
+                  {telemetrySeries_.length ? Math.max(...telemetrySeries_.flatMap((s) => s.points.map((p) => p.value))).toFixed(1) : '0.0'}%
                 </p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-3">

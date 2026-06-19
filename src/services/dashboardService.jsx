@@ -135,38 +135,76 @@ export async function getDashboardSnapshot(devices) {
 
   const allLatest = perDeviceData.map((item) => item.latest).filter(Boolean);
 
+  // Use ALL history points (24h) for meaningful averages instead of just latest point
+  // Filter out low-quality points (indoor/no-fix) for stats calculation
+  const allHistoryPoints = perDeviceData.flatMap((item) => item.history || []);
+  const qualityHistoryPoints = allHistoryPoints.filter((item) => {
+    const hdop = Number(item?.hdop || 0);
+    return hdop > 0 && hdop < 10; // Only include points with reasonable GPS fix
+  });
+
   const totalDistanceMeter = perDeviceData.reduce((sum, item) => {
     const distance = Number(item.summary?.totalDistanceMeter || 0);
     return sum + (Number.isFinite(distance) ? distance : 0);
   }, 0);
 
-  const avgSpeed = safeAverage(allLatest.map((item) => Number(item?.speed || 0)));
-  const avgHdop = safeAverage(allLatest.map((item) => Number(item?.hdop || 0)));
-  const avgSatUsed = safeAverage(allLatest.map((item) => Number(item?.satellites_used || 0)));
-  const avgCn0 = safeAverage(allLatest.map((item) => Number(item?.avg_cn0 || 0)));
+  // Calculate averages from quality-filtered history
+  const avgSpeed = safeAverage(qualityHistoryPoints.map((item) => Number(item?.speed || 0)));
+  const avgHdop = safeAverage(qualityHistoryPoints.map((item) => Number(item?.hdop || 0)));
+  const avgSatUsed = safeAverage(qualityHistoryPoints.map((item) => Number(item?.satellites_used || 0)));
+  const avgCn0 = safeAverage(qualityHistoryPoints.map((item) => Number(item?.avg_cn0 || 0)));
 
-  const excellentCount = allLatest.filter((item) => Number(item?.hdop || 0) <= 1.5).length;
-  const moderateCount = allLatest.filter((item) => {
+  // Fleet health from quality points
+  const qualityPoints = qualityHistoryPoints.filter((item) => Number(item?.hdop || 0) > 0);
+  const excellentCount = qualityPoints.filter((item) => Number(item?.hdop || 0) <= 1.5).length;
+  const moderateCount = qualityPoints.filter((item) => {
     const hdop = Number(item?.hdop || 0);
     return hdop > 1.5 && hdop <= 3;
   }).length;
-  const lowCount = allLatest.filter((item) => Number(item?.hdop || 0) > 3).length;
-  const qualityBase = Math.max(allLatest.length, 1);
+  const lowCount = qualityPoints.filter((item) => Number(item?.hdop || 0) > 3).length;
+  const qualityBase = Math.max(qualityPoints.length, 1);
 
+  // Build time-series telemetry data PER DEVICE (sampled every ~15min)
+  const TRACK_COLORS = ['#22d3ee', '#f97316', '#a78bfa', '#34d399', '#f43f5e', '#eab308', '#60a5fa', '#fb923c'];
+  
   const telemetrySeries = perDeviceData
-    .filter((item) => item.latest)
-    .slice(0, 12)
-    .map((item, index) => {
-      const satUsed = Number(item.latest?.satellites_used || 0);
-      const avgCn0Value = Number(item.latest?.avg_cn0 || 0);
-      const score = clampPercent((satUsed * 6) + (avgCn0Value * 1.2));
+    .filter((item) => item.history.length > 0)
+    .map((item, deviceIndex) => {
+      const sorted = [...item.history]
+        .filter((p) => Number(p?.hdop || 0) > 0 && Number(p?.hdop || 0) < 10)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+      if (sorted.length === 0) return null;
+
+      const maxPoints = 24;
+      const step = Math.max(1, Math.floor(sorted.length / maxPoints));
+      const points = [];
+      for (let i = 0; i < sorted.length && points.length < maxPoints; i += step) {
+        const point = sorted[i];
+        const hdop = Number(point?.hdop || 0);
+        const satUsed = Number(point?.satellites_used || 0);
+        const cn0 = Number(point?.avg_cn0 || 0);
+        const hdopScore = clampPercent((1 - Math.min(hdop, 5) / 5) * 60);
+        const satScore = clampPercent(satUsed * 3);
+        const cn0Score = clampPercent(cn0 * 1.2);
+        const score = clampPercent(hdopScore + satScore * 0.3 + cn0Score * 0.3);
+
+        const time = new Date(point.timestamp);
+        points.push({
+          x: points.length,
+          label: `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`,
+          value: toFixedNumber(score, 1),
+        });
+      }
 
       return {
-        x: index,
-        label: item.device.deviceCode,
-        value: toFixedNumber(score, 1),
+        deviceCode: item.device.deviceCode,
+        deviceName: item.device.deviceName,
+        color: TRACK_COLORS[deviceIndex % TRACK_COLORS.length],
+        points,
       };
-    });
+    })
+    .filter(Boolean);
 
   const inactiveAlerts = devices
     .filter((item) => item.status !== 'active')
@@ -178,24 +216,26 @@ export async function getDashboardSnapshot(devices) {
     }));
 
   const gnssAlerts = perDeviceData
-    .filter((item) => item.latest)
+    .filter((item) => item.history.length > 0)
     .flatMap((item) => {
       const list = [];
-      const satUsed = Number(item.latest?.satellites_used || 0);
-      const hdop = Number(item.latest?.hdop || 0);
+      // Use average from history for alerts
+      const points = item.history;
+      const avgSatUsedDevice = safeAverage(points.map((p) => Number(p?.satellites_used || 0)));
+      const avgHdopDevice = safeAverage(points.map((p) => Number(p?.hdop || 0)));
 
-      if (satUsed > 0 && satUsed < 4) {
+      if (avgSatUsedDevice > 0 && avgSatUsedDevice < 4) {
         list.push({
           title: 'Low satellites used',
-          detail: `${item.device.deviceCode} is using only ${satUsed} satellites for fix.`,
+          detail: `${item.device.deviceCode} averaged only ${avgSatUsedDevice.toFixed(1)} satellites in 24h.`,
           severity: 'Medium',
         });
       }
 
-      if (hdop > 3) {
+      if (avgHdopDevice > 3) {
         list.push({
           title: 'Poor positioning precision',
-          detail: `${item.device.deviceCode} has HDOP ${hdop.toFixed(2)} (higher is worse).`,
+          detail: `${item.device.deviceCode} has avg HDOP ${avgHdopDevice.toFixed(2)} in 24h (higher is worse).`,
           severity: 'Low',
         });
       }

@@ -1,5 +1,6 @@
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Polygon, CircleMarker, Popup, Tooltip, useMap } from 'react-leaflet';
 import { useEffect } from 'react';
+import { useAlertZones } from '../../features/useAlertZones';
 
 function MapBoundsSync({ mapData }) {
   const map = useMap();
@@ -17,6 +18,8 @@ function MapBoundsSync({ mapData }) {
 }
 
 export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
+  const { data: zones = [] } = useAlertZones();
+
   if (!mapData) {
     return null;
   }
@@ -38,6 +41,10 @@ export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
               <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
               End
             </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded border border-amber-400 bg-amber-400/20" />
+              Alert Zone
+            </span>
             {selectedPointIndex !== null && (
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
@@ -54,6 +61,30 @@ export function HistoryRouteMap({ mapData, mapRef, selectedPointIndex }) {
               attribution='&copy; OpenStreetMap contributors'
               crossOrigin="anonymous"
             />
+
+            {/* Alert Zone polygons */}
+            {zones.map((zone) => {
+              const coords = zone.polygon?.coordinates?.[0];
+              if (!coords || coords.length < 3) return null;
+              const positions = coords.map(([lng, lat]) => [lat, lng]);
+              return (
+                <Polygon
+                  key={zone.id}
+                  positions={positions}
+                  pathOptions={{
+                    color: '#f59e0b',
+                    fillColor: '#f59e0b',
+                    fillOpacity: 0.1,
+                    weight: 2,
+                    dashArray: '6 4',
+                  }}
+                >
+                  <Tooltip direction="center" permanent className="!bg-transparent !border-0 !shadow-none !text-amber-400 !text-[10px] !font-semibold">
+                    {zone.name}
+                  </Tooltip>
+                </Polygon>
+              );
+            })}
 
             {/* Route segments - each tracking session is a separate polyline */}
             {(mapData.segments || [mapData.polyline]).map((segment, idx) => (
