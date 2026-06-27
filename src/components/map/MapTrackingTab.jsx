@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Polyline, Polygon, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Polygon, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAlertZones, useCreateAlertZone, useUpdateAlertZone, useDeleteAlertZone } from '../../features/useAlertZones';
 import { Plus, Pencil, Trash2, X, Loader2, MapPin, Undo2, Search, Shield } from 'lucide-react';
@@ -556,6 +557,8 @@ export function MapTrackingTab({ center, devicePoints, selectedTrack, selectedDe
 
           const isSelected = device.deviceCode === selectedDeviceCode;
           const isActive = device.status === 'active';
+          const hasLiveData = device.isLive;
+          const heading = point.hd ?? 0;
 
           let markerColor;
           let fillColor;
@@ -569,6 +572,53 @@ export function MapTrackingTab({ center, devicePoints, selectedTrack, selectedDe
           } else {
             markerColor = '#9ca3af';
             fillColor = '#9ca3af';
+          }
+
+          // Use directional arrow for live devices, circle for inactive
+          if (hasLiveData) {
+            const size = isSelected ? 28 : 22;
+            const arrowIcon = L.divIcon({
+              className: '',
+              html: `
+                <div style="
+                  width: ${size}px;
+                  height: ${size}px;
+                  transform: rotate(${heading}deg);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                ">
+                  <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="11" fill="${fillColor}" opacity="0.25" stroke="${markerColor}" stroke-width="1.5"/>
+                    <path d="M12 4 L17 16 L12 13 L7 16 Z" fill="${fillColor}" stroke="white" stroke-width="1" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              `,
+              iconSize: [size, size],
+              iconAnchor: [size / 2, size / 2],
+              popupAnchor: [0, -size / 2],
+            });
+
+            return (
+              <Marker
+                key={device.deviceCode}
+                position={[point.mapLat, point.mapLng]}
+                icon={arrowIcon}
+              >
+                <Popup>
+                  <div className="text-slate-900">
+                    <div><strong>Device:</strong> {device.deviceCode}</div>
+                    <div><strong>Name:</strong> {device.deviceName}</div>
+                    <div><strong>Source:</strong> Live Socket</div>
+                    <div><strong>Status:</strong> {device.status === 'active' ? 'Active' : 'Inactive'}</div>
+                    <div><strong>Heading:</strong> {heading.toFixed(1)}°</div>
+                    <div><strong>Speed:</strong> {(point.sp ?? 0).toFixed(1)} km/h</div>
+                    <div><strong>Time:</strong> {new Date(point.ts * 1000).toLocaleString()}</div>
+                    <div><strong>Lat/Lng:</strong> {point.mapLat.toFixed(6)}, {point.mapLng.toFixed(6)}</div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
           }
 
           return (
@@ -587,7 +637,7 @@ export function MapTrackingTab({ center, devicePoints, selectedTrack, selectedDe
                 <div className="text-slate-900">
                   <div><strong>Device:</strong> {device.deviceCode}</div>
                   <div><strong>Name:</strong> {device.deviceName}</div>
-                  <div><strong>Source:</strong> {device.isLive ? 'Live Socket' : 'Last Signal'}</div>
+                  <div><strong>Source:</strong> Last Signal</div>
                   <div><strong>Status:</strong> {device.status === 'active' ? 'Active' : 'Inactive'}</div>
                   <div><strong>Time:</strong> {new Date(point.ts * 1000).toLocaleString()}</div>
                   <div><strong>Lat/Lng:</strong> {point.mapLat.toFixed(6)}, {point.mapLng.toFixed(6)}</div>

@@ -36,7 +36,7 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 };
 
-const statusOptions = ['all', 'pending', 'uploaded', 'synced', 'failed'];
+const statusOptions = ['all', 'pending', 'uploaded', 'failed'];
 
 function StatCard({ label, value, description, icon: Icon, accentColor = 'blue' }) {
   const colorMap = {
@@ -255,8 +255,8 @@ export default function SnapshotsPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Total Snapshots" value={snapshots.length} description="All records for this device" icon={Camera} accentColor="blue" />
           <StatCard label="Pending Upload" value={counters.pending || 0} description="Awaiting file upload" icon={Upload} accentColor="amber" />
-          <StatCard label="Synced" value={counters.synced || 0} description="Verified and complete" icon={ShieldCheck} accentColor="emerald" />
-          <StatCard label="Uploaded" value={counters.uploaded || 0} description="File stored successfully" icon={Satellite} accentColor="violet" />
+          <StatCard label="Uploaded" value={counters.uploaded || 0} description="File stored successfully" icon={Satellite} accentColor="emerald" />
+          <StatCard label="Failed" value={counters.failed || 0} description="Upload failed" icon={ShieldCheck} accentColor="rose" />
         </div>
 
         {/* ===== MAIN CONTENT ===== */}

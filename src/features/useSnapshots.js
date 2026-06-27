@@ -77,7 +77,7 @@ export const useSnapshots = () => {
     const total = snapshots.length;
     const autoCount = snapshots.filter((s) => s.captureMode === 'auto').length;
     const manualCount = snapshots.filter((s) => s.captureMode === 'manual').length;
-    const uploadedCount = snapshots.filter((s) => s.syncStatus === 'uploaded' || s.syncStatus === 'synced').length;
+    const uploadedCount = snapshots.filter((s) => s.syncStatus === 'uploaded').length;
     return { total, autoCount, manualCount, uploadedCount };
   }, [snapshots]);
 

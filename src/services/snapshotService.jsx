@@ -2,8 +2,7 @@ import axiosInstance from '../api/axiosInstance.js';
 
 const STATUS_COLORS = {
   pending: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
-  uploaded: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-  synced: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  uploaded: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   failed: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
 };
 
