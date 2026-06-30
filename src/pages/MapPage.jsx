@@ -7,13 +7,6 @@ import { useMap } from '../features/useMap';
 import { HANOI_CENTER } from '../services/mapService.jsx';
 import { getProfile } from '../services/authService.jsx';
 
-const tabClass = (isActive) => (
-  `px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
-    isActive
-      ? 'bg-blue-500/25 border-blue-400/50 text-blue-200'
-      : 'bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-800/70'
-  }`
-);
 
 export default function MapPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -24,16 +17,12 @@ export default function MapPage() {
   const isAdmin = profile?.role === 'admin';
 
   const {
-    selectedDeviceId,
     setSelectedDeviceId,
     selectedDevice,
     displayDevices,
     deviceTracks,
     devicePoints,
     selectedDeviceTrack,
-    latestPoint,
-    fixSvidSet,
-    allSatelliteIds,
     isLoading,
     isError,
   } = useMap();
@@ -43,13 +32,6 @@ export default function MapPage() {
     if (!keyword) return displayDevices;
     return displayDevices.filter((device) => device.deviceName.toLowerCase().includes(keyword));
   }, [deviceSearch, displayDevices]);
-
-  // Get only satellites from selected device for globe 3D view
-  const selectedDeviceSatelliteIds = useMemo(() => {
-    if (!latestPoint?.raw?.status) return [];
-    const ids = latestPoint.raw.status.map((s) => s.svid);
-    return [...new Set(ids)].sort((a, b) => a - b);
-  }, [latestPoint]);
 
   return (
     <DashboardLayout>

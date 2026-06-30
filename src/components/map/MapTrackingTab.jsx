@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Polygon, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -8,12 +8,6 @@ import { Plus, Pencil, Trash2, X, Loader2, MapPin, Undo2, Search, Shield } from 
 import 'leaflet/dist/leaflet.css';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const ZONE_COLORS = ['#ef4444', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6', '#ec4899'];
-
-function getZoneColor(index) {
-  return ZONE_COLORS[index % ZONE_COLORS.length];
-}
 
 function parseZonePositions(zone) {
   if (!zone?.polygon?.coordinates?.[0]) return [];
@@ -51,115 +45,6 @@ function MapViewportSync({ center, devicePoints, selectedTrack, selectedDeviceCo
   }, [center, devicePoints, map, selectedTrack, selectedDeviceCode]);
 
   return null;
-}
-
-// ─── Location Search (Photon geocoder) ────────────────────────────────────────
-
-function LocationSearch() {
-  const map = useMap();
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const debounceRef = useRef(null);
-
-  const handleSearch = useCallback(async (searchText) => {
-    if (!searchText.trim() || searchText.trim().length < 2) {
-      setResults([]);
-      setShowResults(false);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const center = map.getCenter();
-      const res = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(searchText)}&limit=8&lat=${center.lat}&lon=${center.lng}&lang=default`
-      );
-      const data = await res.json();
-      const features = (data.features || []).map((f, idx) => ({
-        place_id: idx,
-        lat: f.geometry.coordinates[1],
-        lon: f.geometry.coordinates[0],
-        display_name: [
-          f.properties.name,
-          f.properties.street,
-          f.properties.district,
-          f.properties.city || f.properties.county,
-          f.properties.state,
-          f.properties.country,
-        ].filter(Boolean).join(', '),
-      }));
-      setResults(features);
-      setShowResults(features.length > 0);
-    } catch {
-      setResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [map]);
-
-  const handleInputChange = useCallback((e) => {
-    const value = e.target.value;
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => handleSearch(value), 400);
-  }, [handleSearch]);
-
-  const handleSelect = useCallback((result) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    map.flyTo([lat, lng], 16, { duration: 1.5 });
-    setQuery(result.display_name.split(',')[0]);
-    setShowResults(false);
-    setResults([]);
-  }, [map]);
-
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      handleSearch(query);
-    }
-    if (e.key === 'Escape') {
-      setShowResults(false);
-    }
-  }, [handleSearch, query]);
-
-  return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-72">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white pointer-events-none" />
-        <input
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => results.length > 0 && setShowResults(true)}
-          placeholder="Tìm kiếm địa điểm..."
-          className="w-full rounded-lg border border-slate-700/80 bg-slate-950/90 backdrop-blur pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:border-blue-400/60 transition-colors"
-        />
-        {isSearching && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 animate-spin" />
-        )}
-      </div>
-
-      {showResults && (
-        <div className="mt-1 rounded-lg border border-slate-700/80 bg-slate-950/95 backdrop-blur overflow-hidden shadow-xl">
-          {results.map((result) => (
-            <button
-              key={result.place_id}
-              type="button"
-              onClick={() => handleSelect(result)}
-              className="w-full text-left px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800/80 border-b border-slate-800/50 last:border-b-0 transition-colors"
-            >
-              <span className="line-clamp-2">{result.display_name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── Drawing Layer ────────────────────────────────────────────────────────────
@@ -516,17 +401,14 @@ export function MapTrackingTab({ center, devicePoints, selectedTrack, selectedDe
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Location search */}
-        <LocationSearch />
-
         {/* Alert Zone polygons */}
         {zonePositions.map((zone, idx) => {
           if (zone.positions.length < 3) return null;
-          const isSelected = selectedZone?.id === zone.id;
           return (
             <Polygon
               key={zone.id}
               positions={zone.positions}
+              eventHandlers={{ click: () => handleZoneClick(zone) }}
               pathOptions={{
                 color: '#ef4444',
                 fillColor: '#ef4444',
